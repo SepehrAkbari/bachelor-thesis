@@ -1,3 +1,17 @@
+#################################
+
+testing.ipynb
+
+bibliography/*
+!/bibliography/.gitkeep
+
+data/*
+!/data/.gitkeep
+
+archive/
+
+#################################
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -143,6 +157,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# VS Code
+.vscode/
+.history/
 
 # Spyder project settings
 .spyderproject
