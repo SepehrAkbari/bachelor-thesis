@@ -15,7 +15,6 @@ class SetAttentionBlock(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
 
     def forward(self, x):
-        # x shape: (batch, num_generators, feature_dim)
         attn_out, _ = self.attention(x, x, x)
         x = self.norm1(x + attn_out)
         ff_out = self.ff(x)
@@ -23,33 +22,40 @@ class SetAttentionBlock(nn.Module):
         return x
 
 class BuchbergerTransformer(nn.Module):
-    def __init__(self, input_dim=6, num_generators=10, d_model=64, n_heads=4):
+    def __init__(self, input_dim=8, d_model=64, n_heads=4):
         super().__init__()
-        # individual exponent vectors to embedding space
+        self.input_dim = input_dim
+        
         self.embedding = nn.Linear(input_dim, d_model)
         
         self.block1 = SetAttentionBlock(d_model, n_heads)
         self.block2 = SetAttentionBlock(d_model, n_heads)
         
-        # Pooling layer to aggregate generator features
         self.pool = nn.AdaptiveAvgPool1d(1) 
         
-        # Regression head to predict additions
         self.head = nn.Sequential(
             nn.Linear(d_model, 128),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(128, 1)
         )
-
+        
     def forward(self, x):
-        # x: (batch, num_gens, exp_dim) -> (batch, 10, 6)
-        x = self.embedding(x)
+        # x shape: (batch, num_gens, current_dim)
+        batch_size, num_gens, current_dim = x.shape
+        
+        # If input is Binomial (dim 6) but model expects Toric (dim 8), pad with zeros.
+        if current_dim < self.input_dim:
+            padding = self.input_dim - current_dim
+            # Pad last dimension: (padding_left, padding_right)
+            x = F.pad(x, (0, padding)) 
+            
+        x = self.embedding(x)   
         x = self.block1(x)
         x = self.block2(x)
         
-        # Pool across the "generator" dimension (dim=1)
-        x = x.transpose(1, 2) # (batch, d_model, num_gens)
-        x = self.pool(x).squeeze(-1) # (batch, d_model)
+        # Global Pooling: (batch, num_gens, d_model) -> (batch, d_model)
+        x = x.transpose(1, 2) 
+        x = self.pool(x).squeeze(-1) 
         
         return self.head(x).squeeze(-1)

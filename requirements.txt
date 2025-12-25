@@ -1,3 +1,6 @@
 numpy
 torch
 pandas
+statsmodels
+seaborn
+matplotlib

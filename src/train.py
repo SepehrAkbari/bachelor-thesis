@@ -10,8 +10,7 @@ def train_one_epoch(model, loader, optimizer, device):
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
         
-        # Log-Cosh loss helps with the high variance in additions
-        pred = model(x)
+        pred = model(x) # Model will pad x if dim=6
         loss = log_cosh_loss(pred, y)
         
         loss.backward()
