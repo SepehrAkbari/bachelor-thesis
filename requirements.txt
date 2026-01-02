@@ -4,3 +4,5 @@ pandas
 statsmodels
 seaborn
 matplotlib
+scikit-learn
+tqdm

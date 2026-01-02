@@ -8,7 +8,12 @@ bibliography/*
 data/*
 !/data/.gitkeep
 
-archive/
+archive/*
+!archive/.gitkeep
+
+src/main.ipynb
+
+_*
 
 #################################
 
