@@ -6,3 +6,5 @@ seaborn
 matplotlib
 scikit-learn
 tqdm
+sympy
+Cython
