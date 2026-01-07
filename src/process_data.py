@@ -116,8 +116,8 @@ if __name__ == "__main__":
     DISTRIBUTION = sys.argv[1]
     
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATA_DIR = os.path.join(BASE_DIR, "data", "groebner_dataset", "stats", DISTRIBUTION)
-    OUTPUT_DIR = os.path.join(BASE_DIR, "data", "groebner_dataset", "tensors")
+    DATA_DIR = os.path.join(BASE_DIR, "data", "stats", DISTRIBUTION)
+    OUTPUT_DIR = os.path.join(BASE_DIR, "data", "tensors")
     OUTPUT_FILE = os.path.join(OUTPUT_DIR, f"{DISTRIBUTION}.pt")
     
     os.makedirs(OUTPUT_DIR, exist_ok=True)

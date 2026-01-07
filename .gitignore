@@ -5,11 +5,12 @@
 bibliography/*
 !/bibliography/.gitkeep
 
-data/*
-!/data/.gitkeep
-
 archive/*
 !archive/.gitkeep
+
+data/*
+!/data/.gitkeep
+!/data/README.md
 
 _*
 !__init__.py
