@@ -1,3 +1,7 @@
+'''
+Dataset of polynomial ideals in tensor format
+'''
+
 import sys
 import os
 import pandas as pd
@@ -6,25 +10,24 @@ import torch
 import sympy as sp
 from tqdm import tqdm
 
-# Add the src directory to the path so we can import the copied modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from buchberger import LeadMonomialsEnv
 from ideals import FixedIdealGenerator
 
-def parse_ideal_string(ideal_str, ring_vars):
+
+def parse_ideal(ideal_str, ring_vars):
     """
-    Parses a string representation of an ideal like "{x^2 + y, z}" 
-    into a list of SymPy polynomials using the provided ring variables.
+    Parses an ideal e.g. "{x^2 + y, z}", into list of SymPy polynomials using ring variables.
     """
-    # Clean the string to match Python syntax
+    if not isinstance(ideal_str, str):
+        return []
+
     clean_str = (ideal_str.replace('{', '[')
                           .replace('}', ']')
                           .replace('^', '**')
-                          .replace('|', ',')) # Handle cases where | is used as separator
+                          .replace('|', ','))
     
-    # We need to evaluate this string in a context where x, y, z, etc. are defined
-    # Create a local dictionary for eval context
     eval_ctx = {str(var): var for var in ring_vars}
     
     try:
@@ -34,75 +37,116 @@ def parse_ideal_string(ideal_str, ring_vars):
         print(f"Error parsing ideal: {ideal_str}")
         raise e
 
-def process_dataset(dist_name, csv_path, output_path):
-    print(f"Processing {dist_name} from {csv_path}...")
+def process_dataset(dist_name, data_dir, output_path):
+    """
+    Processes the dataset for a given distribution from CSV to tensor format.
+    """
+    # 1. Construct File Paths
+    # Input file: contains the 'Ideal' column
+    ideals_path = os.path.join(data_dir, f"{dist_name}.csv")
+    # Label file: contains 'PolynomialAdditions' from the 'degree' strategy
+    labels_path = os.path.join(data_dir, f"{dist_name}_degree.csv")
     
-    # 1. Load the CSV
-    df = pd.read_csv(csv_path)
+    print(f"Processing {dist_name}...")
+    print(f"  - Ideals: {ideals_path}")
+    print(f"  - Labels: {labels_path}")
     
-    # 2. Setup the Ring (Logic adapted from deepgroebner scripts)
-    # Assumes format like '3-20-10-uniform' where first number is num_vars
-    n_vars = int(dist_name.split('-')[0])
-    var_names = [chr(i) for i in range(ord('a'), ord('a') + n_vars)] # a, b, c...
+    # 2. Load Dataframes
+    try:
+        ideals_df = pd.read_csv(ideals_path)
+        labels_df = pd.read_csv(labels_path)
+    except FileNotFoundError as e:
+        print(f"Error: Missing file. {e}")
+        return
+
+    # 3. Validation
+    if len(ideals_df) != len(labels_df):
+        print(f"Warning: Mismatch in length! Ideals: {len(ideals_df)}, Labels: {len(labels_df)}")
+        # We process the intersection of rows to be safe
+        min_len = min(len(ideals_df), len(labels_df))
+        ideals_df = ideals_df.iloc[:min_len]
+        labels_df = labels_df.iloc[:min_len]
     
-    # Create the ring and variables. Using same field and order as deepgroebner default.
+    # 4. Ring Setup
+    # Assumes format like '3-20-4-uniform-test' -> 3 variables
+    try:
+        n_vars = int(dist_name.split('-')[0])
+    except ValueError:
+        # Fallback if naming convention is different, standard is usually 3
+        print("Could not infer variables from name, defaulting to 3.")
+        n_vars = 3
+
+    var_names = [chr(i) for i in range(ord('a'), ord('a') + n_vars)]
+    # Create ring with 32003 characteristic (standard for this dataset)
     ring, *variables = sp.ring(",".join(var_names), sp.FF(32003), 'grevlex')
     
-    # 3. Initialize the Environment
-    # We use LeadMonomialsEnv because it automatically converts pairs to a matrix 
-    # of exponents (which is exactly what a Neural Network needs).
-    # k=1 gives us the lead monomial of f_i and f_j for every pair.
-    env = LeadMonomialsEnv(ideal_dist=None, k=1, elimination='gebauermoeller')
+    # 5. Environment Setup
+    # k=1 extracts lead monomials for the pair (f_i, f_j)
+    # elimination='gebauermoeller' matches the standard reduction strategy
+    env = LeadMonomialsEnv(ideal_dist=dist_name, k=1, elimination='gebauermoeller')
     
     processed_data = []
     
-    print("Converting ideals to S-pair matrices...")
-    for idx, row in tqdm(df.iterrows(), total=len(df)):
-        # A. Parse the Ideal
+    # 6. Iteration
+    # We iterate through both dataframes simultaneously
+    for idx in tqdm(range(len(ideals_df))):
+        row_ideal = ideals_df.iloc[idx]
+        row_label = labels_df.iloc[idx]
+        
+        # A. Parse Ideal
         try:
-            polys = parse_ideal_string(row['Ideal'], variables)
-        except:
+            polys = parse_ideal(row_ideal['Ideal'], variables)
+            if not polys: continue
+        except Exception as e:
+            print(f"Skipping row {idx} due to parsing error: {e}")
+            continue
+        
+        # B. Generate S-Pairs Matrix (The "Geometric" Input)
+        try:
+            # Inject specific ideal into environment
+            env.env.ideal_gen = FixedIdealGenerator(polys)
+            # Reset triggers the first update() and returns the pair matrix
+            state_matrix = env.reset()
+        except Exception as e:
+             # Sometimes an ideal is already a Groebner basis (empty pairs), skip these
+            # print(f"Skipping row {idx} (Likely 0 pairs): {e}")
             continue
 
-        # B. Inject into Environment
-        # We use FixedIdealGenerator to force the env to use THIS specific ideal
-        env.env.ideal_gen = FixedIdealGenerator(polys)
+        # C. Get Label
+        # We use log1p(additions) because the values span orders of magnitude
+        raw_additions = row_label['PolynomialAdditions']
+        label = np.log1p(raw_additions)
         
-        # C. Reset to generate the initial S-pairs
-        # The env.reset() in LeadMonomialsEnv returns the matrix representation
-        state_matrix = env.reset()
-        
-        # D. Get the Label (Log of additions is usually more stable for regression)
-        # Using log1p to handle 0 cleanly, though additions should be >0
-        label = np.log1p(row['PolynomialAdditions']) 
-        
-        # E. Store as Tensors
-        # Input: [NumPairs, FeatureDim] (Float for NN, though data is Int)
-        # Label: [1]
+        # D. Save
         processed_data.append({
             'features': torch.tensor(state_matrix, dtype=torch.float32),
             'label': torch.tensor(label, dtype=torch.float32),
+            'raw_additions': raw_additions,
             'original_index': idx
         })
-        
-    print(f"Saving {len(processed_data)} samples to {output_path}...")
+    
+    # 7. Save Output
+    print(f"Successfully processed {len(processed_data)} samples.")
+    print(f"Saving to {output_path}")
     torch.save(processed_data, output_path)
+    
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: train.py <DISTRIBUTION>")
+        print("Usage: python process_data.py <DISTRIBUTION>")
+        # Example: python process_data.py 3-20-4-uniform-test
         sys.exit()
-    DISTRIBUTION = sys.argv[1].lower()
-    # CONFIGURATION
-    # Change these paths to match your folder structure
-    DATA_DIR = "../data/groebner_dataset"
-    CSV_FILE = f"{DATA_DIR}/stats/{DISTRIBUTION}/{DISTRIBUTION}.csv" 
-    OUTPUT_FILE = f"{DATA_DIR}/{DISTRIBUTION}/{DISTRIBUTION}.pt"
+        
+    DISTRIBUTION = sys.argv[1]
     
-    # Ensure data directory exists
-    os.makedirs(f"{DATA_DIR}/{DISTRIBUTION}", exist_ok=True)
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DATA_DIR = os.path.join(BASE_DIR, "data", "groebner_dataset", "stats", DISTRIBUTION)
+    OUTPUT_DIR = os.path.join(BASE_DIR, "data", "groebner_dataset", "tensors")
+    OUTPUT_FILE = os.path.join(OUTPUT_DIR, f"{DISTRIBUTION}.pt")
     
-    if not os.path.exists(CSV_FILE):
-        print(f"Error: Could not find {CSV_FILE}.")
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    if not os.path.exists(DATA_DIR):
+        print(f"Error: Data directory not found: {DATA_DIR}")
     else:
-        process_dataset(DISTRIBUTION, CSV_FILE, OUTPUT_FILE)
+        process_dataset(DISTRIBUTION, DATA_DIR, OUTPUT_FILE)
