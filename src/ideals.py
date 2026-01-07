@@ -1,4 +1,6 @@
-"""Generators of ideals."""
+"""
+Generators of ideals.
+"""
 
 import itertools as it
 import numpy as np

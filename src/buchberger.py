@@ -1,4 +1,6 @@
-"""An environment for computing Groebner bases with Buchberger's algorithm."""
+"""
+An environment for computing Groebner bases with Buchberger's algorithm.
+"""
 
 import bisect
 import numpy as np
