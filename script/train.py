@@ -10,6 +10,9 @@ sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..'
     )))
 
+if not hasattr(np, 'string_'):
+    np.string_ = np.bytes_
+
 from src.include.wrapped import CLeadMonomialsEnv
 from src.network import GeometricActorCritic
 from src.ppo import PPOAgent, RolloutBuffer
