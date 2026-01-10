@@ -1,5 +1,5 @@
 # distutils: language = c++
-# distutils: sources = src/include/polynomials.cpp src//include/ideals.cpp
+# distutils: sources = src/include/polynomials.cpp src/include/ideals.cpp
 # distutils: extra_compile_args = -std=c++17
 # cython: language_level = 3
 
