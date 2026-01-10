@@ -67,7 +67,6 @@ def train(dist_name, pretrained_path, model_dir, log_dir,
             current_ep_reward += reward
             
             if time_step % update_timesteps == 0:
-                print(f"Episode {i_episode} | Step {time_step}")
                 agent.update(buffer)
             
             if done:
@@ -80,7 +79,7 @@ def train(dist_name, pretrained_path, model_dir, log_dir,
             
         # Save Model
         if i_episode % 100 == 0:
-             torch.save(policy.state_dict(), f"{model_dir}/rl_checkpoint_{i_episode}.pth")
+             torch.save(policy.state_dict(), f"{model_dir}/checkpoint_{i_episode}.pth")
 
     print("Training Finished.")
     writer.close()
