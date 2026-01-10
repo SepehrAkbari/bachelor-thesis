@@ -2,4 +2,4 @@
 *.pyx linguist-language=Cython
 *.h linguist-language=C++
 *.cpp linguist-language=C++
-*.cpp -linguist-generated
+# *.cpp -linguist-generated
