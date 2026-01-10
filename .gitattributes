@@ -1,5 +1,5 @@
 *.pxd linguist-language=Cython
 *.pyx linguist-language=Cython
-*.cpp linguist-language=C++
 *.h linguist-language=C++
-src/include/wrapped.cpp linguist-generated=false
+*.cpp linguist-language=C++
+*.cpp -linguist-generated
