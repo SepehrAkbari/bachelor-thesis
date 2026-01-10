@@ -117,7 +117,7 @@ def parse_ideal_dist(ideal_dist):
     if dist_args[0] == 'cyclic':
         n = int(dist_args[1])
         return FixedIdealGenerator(cyclic(n))
-    elif dist_args[3] in ['uniform', 'weighted', 'maximum']:
+    elif dist_args[3] in ['uniform', 'weighted', 'maximum', 'test']:
         kwargs = {
             'n': int(dist_args[0]),
             'd': int(dist_args[1]),
