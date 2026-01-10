@@ -23,7 +23,11 @@ class SetTransformer(nn.Module):
             dropout=dropout,
             batch_first=True
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer, 
+            num_layers=num_layers,
+            enable_nested_tensor=False
+        )
         
         # Value Head: Predicts total complexity
         self.value_head = nn.Sequential(
