@@ -43,49 +43,25 @@ def evaluate(dist_name, model_path, num_episodes=100):
 
     for i in tqdm(range(num_episodes)):
         
-        # --- A. Run Agent ---
-        # Note: We must clone the env or rely on the fact that we can't 
-        # easily 'reset' to the exact same state in the C++ wrapper 
-        # without explicit seed control per step. 
-        # A better approach for the thesis: 
-        # Compare AGENT vs STRATEGIES on *DIST_NAME averages*, 
-        # rather than 1-to-1 instance comparison, OR use a fixed dataset like in Stage 1.
-        
-        # For now, we will just measure the Agent's performance average.
-        
         state = env.reset()
         steps = 0
         agent_additions = 0
         done = False
         
         while not done:
-            # Prepare State
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
             
-            # Select Action (Deterministic / Greedy for Eval)
             with torch.no_grad():
                 _, policy_logits = agent.transformer(state_tensor, mask=None)
                 action = torch.argmax(policy_logits).item()
             
             state, reward, done, _ = env.step(action)
             
-            # Reward is -(additions + 1), so additions = -reward - 1
-            # But the C++ env might return -1 for zero reductions.
-            # Let's trust the reward accumulation.
-            agent_additions += (-reward) # Approximate cost
+            agent_additions += (-reward)
             steps += 1
-            
-        # --- B. Run Baselines (Sugar/Degree) ---
-        # The C++ env allows us to query the cost of heuristic strategies directly
-        # on the *next* generated ideal. 
-        # To strictly compare on the SAME ideal, we would need to modify the C++ code 
-        # to save/load ideals.
-        # For this script, we will trust the Law of Large Numbers (averages converge).
-        
-        # We re-run a "similar" ideal for the baseline
-        # (This is a limitation of the current wrapper, but acceptable for N > 500)
-        sugar_val = env.value(strategy='degree', gamma=1.0) # gamma=1.0 sums total reward
-        sugar_additions = -sugar_val # Convert negative reward to positive cost
+
+        sugar_val = env.value(strategy='degree', gamma=1.0)
+        sugar_additions = -sugar_val
 
         results.append({
             'Agent': agent_additions,
