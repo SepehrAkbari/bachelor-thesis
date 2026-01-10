@@ -2,3 +2,4 @@
 *.pyx linguist-language=Cython
 *.cpp linguist-language=C++
 *.h linguist-language=C++
+src/include/wrapped.cpp linguist-generated=false
