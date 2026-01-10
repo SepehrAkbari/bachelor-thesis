@@ -1,5 +1,5 @@
 """
-An environment for computing Groebner bases with Buchberger's algorithm.
+Environment for computing Groebner bases with Buchberger's algorithm.
 """
 
 import bisect
@@ -7,7 +7,7 @@ import numpy as np
 import sympy as sp
 import IPython
 
-from ideals import IdealGenerator, parse_ideal_dist
+from .ideal import IdealGenerator, parse_ideal_dist
 
 
 def spoly(f, g, lmf=None, lmg=None):

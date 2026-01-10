@@ -1,6 +1,11 @@
+"""
+Model architectures.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 
 class SetTransformer(nn.Module):
     def __init__(self, input_dim, hidden_dim=64, num_heads=4, num_layers=2, dropout=0.1):

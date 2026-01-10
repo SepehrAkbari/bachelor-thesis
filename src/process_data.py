@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(
     )))
 
 from src.buchberger import LeadMonomialsEnv
-from src.ideals import FixedIdealGenerator
+from src.ideal import FixedIdealGenerator
 
 
 def parse_ideal(ideal_str, ring_vars):
