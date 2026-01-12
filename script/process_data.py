@@ -36,7 +36,7 @@ def parse_ideal(ideal_str, ring_vars):
         poly_list = eval(clean_str, {}, eval_ctx)
         return poly_list
     except Exception as e:
-        print(f"Error: cannot parse ideal string: {ideal_str} ({e})")
+        print(f"Error: cannot parse ideal string {ideal_str} ({e})")
         raise e
 
 def process_dataset(dist_name, data_dir, output_path):
@@ -64,7 +64,7 @@ def process_dataset(dist_name, data_dir, output_path):
     try:
         n_vars = int(dist_name.split('-')[0])
     except ValueError:
-        print("Error: Unable to parse number of variables from distribution name. Expected format e.g. '3-20-4-uniform'.")
+        print("Error: Unable to parse number of variables from distribution name. Expeting e.g. '3-20-4-uniform'.")
         exit()
 
     var_names = [chr(i) for i in range(ord('a'), ord('a') + n_vars)]
@@ -90,6 +90,11 @@ def process_dataset(dist_name, data_dir, output_path):
         try:
             env.env.ideal_gen = FixedIdealGenerator(polys)
             state_matrix = env.reset()
+            
+            # Nodes shape: (N_poly, FeatureDim)
+            poly_features = np.array(env.leads, dtype=np.float32)
+            # Edges shape: (N_pair, 2)
+            pair_indices = np.array(env.env.P, dtype=np.int64)
         except Exception as e:
             print(f"Warning: Skipping row {idx} ({e}).")
             continue
@@ -101,6 +106,8 @@ def process_dataset(dist_name, data_dir, output_path):
         # Compiling
         processed_data.append({
             'features': torch.tensor(state_matrix, dtype=torch.float32),
+            'poly_features': torch.tensor(poly_features, dtype=torch.float32),
+            'pair_indices': torch.tensor(pair_indices, dtype=torch.long),
             'label': torch.tensor(label, dtype=torch.float32),
             'raw_additions': raw_additions,
             'original_index': idx
