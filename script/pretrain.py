@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..'
     )))
 
-from src.model import SetTransformer
+from src.model import SetTransformer, BGNN
 
 
 class GroebnerDataset(Dataset):
@@ -84,6 +84,13 @@ def train(dist_name, data_path, model_dir, log_dir,
             num_heads=num_heads, 
             num_layers=num_layers,
             dropout=dropout
+        ).to(device)
+    if model_name.lower() in ("bipartitegnn", "bipartite_gnn", "bgnn"):
+        model = BGNN(
+            poly_input_dim=input_dim,
+            pair_input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers
         ).to(device)
     else:
         print(f"Error: Unknown model name '{model_name}'.")
