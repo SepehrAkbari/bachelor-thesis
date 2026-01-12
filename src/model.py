@@ -54,7 +54,6 @@ class SetTransformer(nn.Module):
             x: Tensor of shape (Batch, Max_Pairs, Input_Dim)
             mask: BoolTensor of shape (Batch, Max_Pairs). True where padding exists.
         """
-        # Embed each pair independently
         # x shape: (B, P, Input_Dim) -> (B, P, Hidden)
         h = self.embedding(x)
         
@@ -83,9 +82,9 @@ class SetTransformer(nn.Module):
             
         return value_pred, policy_logits
     
-class BipartiteGNNLayer(nn.Module):
+class BGNNLayer(nn.Module):
     def __init__(self, poly_dim, pair_dim, hidden_dim):
-        super(BipartiteGNNLayer, self).__init__()
+        super(BGNNLayer, self).__init__()
     
         self.message_mlp = nn.Sequential(
             nn.Linear(pair_dim + 2 * poly_dim, hidden_dim),
@@ -121,15 +120,15 @@ class BipartiteGNNLayer(nn.Module):
         out = self.pair_update(messages)
         return out
 
-class BipartiteGroebnerModel(nn.Module):
+class BGNN(nn.Module):
     def __init__(self, poly_input_dim, pair_input_dim, hidden_dim=64, num_layers=2):
-        super(BipartiteGroebnerModel, self).__init__()
+        super(BGNN, self).__init__()
         
         self.poly_embed = nn.Linear(poly_input_dim, hidden_dim)
         self.pair_embed = nn.Linear(pair_input_dim, hidden_dim)
         
         self.layers = nn.ModuleList([
-            BipartiteGNNLayer(hidden_dim, hidden_dim, hidden_dim) 
+            BGNNLayer(hidden_dim, hidden_dim, hidden_dim) 
             for _ in range(num_layers)
         ])
         
