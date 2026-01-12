@@ -1,3 +1,8 @@
+"""
+Trains a PPO agent for selecting S-pairs.
+"""
+
+
 import sys
 import os
 import torch
