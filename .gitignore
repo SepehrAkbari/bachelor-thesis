@@ -12,6 +12,8 @@ data/*
 !/data/.gitkeep
 !/data/README.md
 
+script/orchestrator
+
 _*
 !__init__.py
 
