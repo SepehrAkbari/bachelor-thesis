@@ -12,6 +12,9 @@ data/*
 !/data/.gitkeep
 !/data/README.md
 
+pdf/*
+!/pdf/.gitkeep
+
 script/orchestrator
 
 _*
