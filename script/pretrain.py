@@ -49,7 +49,7 @@ def collate_fn(batch):
 def train(dist_name, data_path, model_dir, log_dir,
           batches=32, lr=1e-4, epochs=100, patience=10, 
           hidden_dim=128, num_layers=3, num_heads=4, dropout=0.1,
-          model_name="SetTransformer"):
+          model_name="st"):
     """
     Trains model and saves best checkpoint.
     """
@@ -85,7 +85,7 @@ def train(dist_name, data_path, model_dir, log_dir,
             num_layers=num_layers,
             dropout=dropout
         ).to(device)
-    if model_name.lower() in ("bipartitegnn", "bipartite_gnn", "bgnn"):
+    elif model_name.lower() in ("bipartitegnn", "bipartite_gnn", "bgnn"):
         model = BGNN(
             poly_input_dim=input_dim,
             pair_input_dim=input_dim,
@@ -190,6 +190,9 @@ if __name__ == "__main__":
     LOG_DIR = f"{MODEL_DIR}/log/"
     os.makedirs(LOG_DIR, exist_ok=True)
     
+    MODEL = "st"
+    
     train(DIST_NAME, DATA_PATH, MODEL_DIR, LOG_DIR,
           batches=32, lr=1e-4, epochs=100, patience=10,
-          hidden_dim=128, num_layers=3, num_heads=4, dropout=0.1)
+          hidden_dim=128, num_layers=3, num_heads=4, dropout=0.1,
+          model_name=MODEL)
