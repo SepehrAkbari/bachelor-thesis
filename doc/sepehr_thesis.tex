@@ -1,0 +1,79 @@
+%!TEX root = ../sepehr_thesis.tex
+
+\documentclass[master,tocprelim]{cornell}
+%% Added to avoid the \ifpdf name clash error
+\let\ifpdf\relax
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+\usepackage{graphicx,pstricks}
+\usepackage{graphics}
+\usepackage{moreverb}
+\usepackage{subfigure}
+\usepackage{epsfig}
+\usepackage{subfigure}
+\usepackage{hangcaption}
+\usepackage{txfonts}
+\usepackage{palatino}
+\usepackage{minted}
+\usepackage{enumitem}
+\usepackage{varwidth}
+
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}{Example}[section]
+\newtheorem{theorem}{Theorem}[section]
+
+
+\renewcommand{\algorithmicrequire}{\textbf{Input}}
+\renewcommand{\algorithmicensure}{\textbf{Output}}
+
+%if you're having problems with overfull boxes, you may need to increase
+%the tolerance to 9999
+\tolerance=9999
+
+\bibliographystyle{plain}
+%\bibliographystyle{IEEEbib}
+
+\renewcommand{\caption}[1]{\singlespacing\hangcaption{#1}\normalspacing}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+
+\title {Thesis Title}
+\author {Sepehr Akbari}
+\conferraldate {April}{2026}
+\degreefield {B.A. in Computer Science}
+\copyrightholder{Sepehr Akbari}
+\copyrightyear{2026}
+
+\begin{document}
+
+\maketitle
+\makecopyright
+
+\include{base/abstract}
+\include{base/bio}
+\include{base/dedication}
+\include{base/acknowledgements}
+
+\contentspage
+\tablelistpage
+\figurelistpage
+
+\normalspacing \setcounter{page}{1} \pagenumbering{arabic}
+\pagestyle{cornell} \addtolength{\parskip}{0.5\baselineskip}
+
+\include{main/chapter1}
+\include{main/chapter2}
+
+\bibliography{sepehr_thesis}
+
+\include{other/appendixa}
+
+\end{document}
