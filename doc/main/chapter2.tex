@@ -157,9 +157,9 @@ While the existence of Gröbner bases is theoretically guaranteed, their practic
 
 The primary obstruction to uniqueness in multivariate division is the cancellation of leading terms. If we have two polynomials $f, g \in I$, it is possible that a linear combination $af + bg$ causes the leading terms to cancel, revealing a new leading term of lower order that was previously hidden. Buchberger identified that we do not need to check all random linear combinations. We only need to check the minimal cancellation between the leading terms of pairs of generators.
 
-\begin{definition}[S-Polynomial]
+\begin{definition}[$S$-polynomial]
 \label{def:s_polynomial}
-Let $f, g \in k[x_1, \dots, x_n]$ be non-zero polynomials. Let $x^\gamma = \text{lcm}(\text{LM}(f), \text{LM}(g))$ be the least common multiple of their leading monomials. The S-polynomial of $f$ and $g$ is defined as
+Let $f, g \in k[x_1, \dots, x_n]$ be non-zero polynomials. Let $x^\gamma = \text{lcm}(\text{LM}(f), \text{LM}(g))$ be the least common multiple of their leading monomials. The $S$-polynomial of $f$ and $g$ is defined as
 \[
 S(f, g) = \frac{x^\gamma}{\text{LT}(f)} \cdot f - \frac{x^\gamma}{\text{LT}(g)} \cdot g
 \]
@@ -169,21 +169,19 @@ The $S$-polynomial is constructed specifically to cancel the leading terms of $f
 
 Now suppose $f \in I$, then by Definition \ref{def:ideal}, $f$ can be expressed as
 \[ f = \sum_{i=1}^{s} a_i g_i \]
-for some $a_i \in R$ and $g_i \in G$. Observe that each term in this sum has a lead term $\text{LT}(a_i g_i) = \text{LT}(a_i) \text{LT}(g_i)$, which is divisible by $\text{LT}(g_i)$. The only way that $f$ has a leading term not divisible by any $\text{LT}(g_i)$ is if there is cancellation among these leading terms. We can trace this cancellation back to pairs of generators $g_i, g_j$ whose leading terms cancel in the sum. The minimal such cancellation is exactly the $S$-polynomial $S(g_i, g_j)$, and since by assumption $f \in I$, we must have $S(g_i, g_j) \in I$ as well. Therefore, if $G$ is a Gröbner basis, by property \textit{(i)} of Definition \ref{def:grobner_basis}, we must have $\text{reduce}(S(g_i, g_j), G) = 0$ for all pairs $i, j$. Conversely, if this condition holds for all pairs, then any polynomial $f \in I$ cannot have a leading term that escapes divisibility by some $\text{LT}(g_i)$, because any such escape would trace back to a non-zero remainder from some $S$-polynomial. This leads us to Buchberger's Criterion.
+for some $a_i \in R$ and $g_i \in G$. Observe that each term in this sum has a lead term $\text{LT}(a_i g_i) = \text{LT}(a_i) \text{LT}(g_i)$, which is divisible by $\text{LT}(g_i)$. The only way that $f$ has a leading term not divisible by any $\text{LT}(g_i)$ is if there is cancellation among these leading terms. We can trace this cancellation back to pairs of generators $g_i, g_j$ whose leading terms cancel in the sum. The minimal such cancellation is exactly the $S$-polynomial $S(g_i, g_j)$, and by our assumption that $f \in I$, we must have $S(g_i, g_j) \in I$ as well. Therefore, if $G$ is a Gröbner basis, by property \textit{(i)} from Definition \ref{def:grobner_basis}, we must have $\text{reduce}(S(g_i, g_j), G) = 0$ for all pairs $i, j$. Conversely, if this condition holds for all pairs, then any polynomial $f \in I$ cannot have a leading term that escapes divisibility by some $\text{LT}(g_i)$, because any such escape would trace back to a non-zero remainder from some $S$-polynomial. This leads us to Buchberger's Criterion.
 
 
 \begin{theorem}[Buchberger's Criterion]
 \label{thm:buchberger_criterion}
-Let $G = \{g_1, \dots, g_t\}$ be a generating set for an ideal $I$. Then $G$ is a Gröbner basis for $I$ if and only if:
+Let $G = \{g_1, \dots, g_s\}$ be a generating set for an ideal $I$. Then $G$ is a Gröbner basis for $I$ if and only if:
 \[
 \text{reduce}(S(g_i, g_j), G) = 0
 \]
-for all pairs $1 \le i < j \le t$.
+for all pairs $1 \le i < j \le s$.
 \end{theorem}
 
-This theorem transforms the definition of a Gröbner basis from an abstract property about infinite sets (all polynomials in $I$) into a finite computational check.
-
-Buchberger's algorithm is a direct application of the criterion above. We start with an arbitrary generating set and iteratively check S-polynomials. If an S-polynomial has a non-zero remainder, we add that remainder to our generating set. This expands the set of leading terms, allowing us to reduce more polynomials.
+This theorem transforms the definition of a Gröbner basis from an abstract property about infinite sets (all polynomials in $I$) into a finite computational check. Buchberger's algorithm is a direct application of the criterion above, which computes a Gröbner basis of $I$ from any starting generating set of $I$, by iteratively checking all $S$-polynomials of our current generating set. If any $S$-polynomial reduces to a non-zero remainder, we force them to reduce to zero, by adding their reduction to our generating set. This process continues to reveal even more $S$-polynomials to check, until all $S$-polynomials reduce to zero; at this point our generating set is a Gröbner basis.
 
 \begin{algorithm}[H]
 \caption{Buchberger's Algorithm}
