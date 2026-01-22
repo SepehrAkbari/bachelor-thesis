@@ -1,5 +1,3 @@
-%!TEX root = ../sepehr_thesis.tex
-
 \documentclass[master,tocprelim]{cornell}
 %% Added to avoid the \ifpdf name clash error
 \let\ifpdf\relax
@@ -7,6 +5,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
+\usepackage{physics}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{float}
@@ -69,8 +68,9 @@
 \normalspacing \setcounter{page}{1} \pagenumbering{arabic}
 \pagestyle{cornell} \addtolength{\parskip}{0.5\baselineskip}
 
-\include{main/chapter1}
-\include{main/chapter2}
+\include{main/chap1-intro}
+\include{main/chap2-groebner}
+
 
 \bibliography{sepehr_thesis}
 

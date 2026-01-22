@@ -47,7 +47,7 @@ R = QQ[x, y, MonomialOrder => Lex];
 h = x^2 * y + y^4;
 f1 = x^2 * y - x;
 f2 = x^2 + y^3;
-print("h = " | toString h);
+
 
 print("-----");
 
