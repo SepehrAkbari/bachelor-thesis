@@ -97,6 +97,29 @@ Graded reverse lexicographic order is defined by $x^\alpha >_{grevlex} x^\beta$ 
 \end{definition}
 Grevlex compares total degree first. For example, $x>y>z$, $y^2 > x z$ since $2 > 1$. If total degrees are equal, it favors monomials that have fewer variables from the end of the ordering. Thus, $x y > x z$ because the $y$-exponent is larger than the $z$-exponent. For computation, grevlex is often more efficient than lex as it tends to keep coefficients smaller.
 
+
+It is worth noting that these definitions are specific instances of a more general framework. In fact, by Robbiano's Theorem \cite{Robbiano1986_TheoryOfGradedStructures}, any admissible monomial ordering on $k[x_1, \dots, x_n]$ can be represented by a non-singular matrix $M \in \text{GL}_n(\mathbb{Q})$. Given such a matrix $M$, we define the ordering $>_M$ by mapping the exponent vectors $\alpha$ and $\beta$ to the vector space $\mathbb{Q}^n$ via linear transformation and comparing the results lexicographically. Formally, we have
+$$
+x^\alpha >_M x^\beta \iff M\alpha >_{lex} M\beta
+$$
+where $>_{lex}$ on the right-hand side denotes the standard lexicographic comparison of vectors, essentially comparing the first non-zero entry of the difference.
+
+To ensure that $>_M$ is a well-ordering compatible with multiplication, the matrix $M$ must satisfy specific positivity conditions, typically that the first non-zero entry of every column is positive. This matrix representation is particularly powerful because it allows us to construct custom orderings for specific applications, such as elimination theory, simply by designing the appropriate matrix.
+
+\begin{example}
+    For a Lex ordering with $x_1 > x_2 > \dots > x_n$, the corresponding matrix is the identity matrix $I_n$, as
+    $$
+    M_{lex} = \begin{pmatrix} 1 & 0 & \dots & 0 \\ 0 & 1 & \dots & 0 \\ \vdots & \vdots & \ddots & \vdots \\ 0 & 0 & \dots & 1 \end{pmatrix}
+    $$
+    comparing $M_{lex}\alpha$ with $M_{lex}\beta$ is identical to comparing $\alpha$ and $\beta$ directly.
+
+    Grevlex can be represented by a matrix that first checks total degree (a row of 1s) and then applies negative weights to reverse the tie-breaking on variable indices. For $\mathbb{Q}[x, y, z]$, the matrix is 
+    $$
+    M_{grevlex} = \begin{pmatrix} 1 & 1 & 1 \\ 1 & 1 & 0 \\ 1 & 0 & 0 \end{pmatrix}
+    $$
+    where the first row compares the total degree $|\alpha|$ vs $|\beta|$. If they are equal, the subsequent rows enforce the reverse condition by prioritizing variables earlier in the sequence.
+\end{example}
+
 With a fixed monomial order, we can define the leading term of a polynomial $f$, denoted $\text{LT}(f)$, as well as its coefficient $\text{LC}(f)$ and monomial $\text{LM}(f)$.
 
 Given a monomial order and a set of divisors $F = \{f_1, \dots, f_s\}$, we can formulate a multivariate polynomial long division algorithm with the goal to write $f$ as
