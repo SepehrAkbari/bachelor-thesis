@@ -1,0 +1,36 @@
+\section{Complexity and Computational Bounds}
+
+To contextualize the performance improvements proposed in Section \ref{sec:improvements_buchberger}, we must first address the inherent computational complexity of constructing Gröbner bases. The behavior of Buchberger's algorithm is notoriously volatile; while it solves small systems almost instantaneously, slight increases in the number of variables or the degree of input polynomials can make the computation infeasible. We analyze complexity primarily through the time complexity (number of arithmetic operations) and the space complexity (memory requirements). In the context of Gröbner bases, both metrics are inextricably linked to the degrees of the polynomials generated during the intermediate steps of the algorithm. If the degrees of intermediate $S$-polynomials explode, the number of terms, and thus the matrix sizes in linear algebra steps, grows combinatorially.
+
+The theoretical worst-case performance of Gröbner basis computation is discouraging. The Ideal Membership problem is known to be EXPSPACE-complete, as shown in \cite{Mayr1982_ComplexityWordProblems}. Consequently, any algorithm that computes a Gröbner basis must, in the worst case, require space (and time) double exponential in the number of variables. Let $d$ be the maximal degree of the input generators and $n$ be the number of variables. There exists a rigorous upper bound on the degree of the polynomials in the reduced Gröbner basis, often cited as the Dubé bound \cite{Maletzky2019_DubeDegrees, bayer1993_WhatCanBeComputed}, given by
+$$
+\deg(GB(I)) \leq 2 \left( \frac{d^2}{2} + d \right)^{2^{n-1}}
+$$
+
+As demonstrated in \cite{Bayer1988_ComplexityOfSyzygies, Koh1998_QuadricsDoubleExp}, the degrees of the ideal can grow as $O(d^{2^n})$. To visualize why this occurs, one can imagine ideals constructed to simulate counter machines or similar computational devices. These pathological ideals force the variable degrees to act as counters that must reach astronomical values to trigger cancellations.
+
+\begin{example}
+Consider a simplified mechanism of degree explosion. Let $I \subset k[x_1, \dots, x_n]$ contain relations that recursively power variables, such as
+$$
+x_{i+1} - x_i^d \in I \quad \text{for } 1 \leq i < n.
+$$
+
+In this chain, $x_2$ effectively represents $x_1^d$, $x_3$ represents $x_2^d = x_1^{d^2}$, and by the time we reach $x_n$, we are manipulating terms of degree $d^{n-1}$. While this specific example is a simplification, \cite{Mayr1982_ComplexityWordProblems} constructs ideals where the relations enforce a synchronization constraint that prevents short-circuits, forcing the algorithm to traverse a path of length $2^{2^n}$ in the polynomial state space.
+\end{example}
+
+For practical purposes, this implies that if an arbitrary input system triggers this worst-case behavior, no amount of hardware optimization or parallelization will suffice. The computation will exhaust available memory long before completion. Fortunately, such pathological cases are statistically rare. In algebraic geometry, we distinguish between arbitrary systems and generic systems. A system is considered generic if its coefficients do not satisfy any specific algebraic relations that would cause accidental cancellations or dependencies. For a generic system of $n$ equations in $n$ variables with degrees $d_1, \dots, d_n$, the sequence of polynomials $f_1, \dots, f_n$ forms a \textit{regular sequence}. This means that the algebraic variety defined by the ideal has the expected dimension of zero, and the parts at infinity behave well.
+
+Under these conditions, the complexity is governed by the Macaulay bound \cite{MacAulay1927_MacaulayBound,Stanley1975_UpperBoundConjecture}, which is significantly more manageable. The maximal degree of polynomials appearing in the computation is bounded by the index of regularity given by
+$$
+d_{reg} = \sum_{i=1}^{n} (d_i - 1) + 1.
+$$
+
+For a system where all generators have degree $d$, this simplifies to roughly $n(d-1) + 1$. Since the number of monomials of this degree grows exponentially with $n$, this is merely single exponential in the input size, rather than double exponential.
+
+\begin{remark}
+The disparity between the worst-case and generic case is very pronounced. For a system with $n=10$ variables and quadratic generators ($d=2$); in the generic case, the maximum degree is approximately $10(2-1) + 1 = 11$. The number of monomials of degree at most 11 in 10 variables is roughly $\binom{10+11}{10} \approx 3.5 \times 10^5$, which is computationally feasible. In contrast, in the worst-case scenario, the maximum degree could reach $2^{2^{10}}$, leading to an unmanageable number of monomials.
+\end{remark}
+
+Even within the favorable confines of generic systems, the complexity of the computation is strictly dependent on the choice of monomial ordering. This dependency is not merely an implementation detail but a fundamental property of the algorithm. The Lexicographic Order is notoriously slow for basis construction. Because $x_1 > x_2 > \dots > x_n$, the algorithm attempts to eliminate variables one by one. This elimination process, conceptually similar to Gaussian elimination but for non-linear terms, tends to produce polynomials with massive coefficients and extremely high degrees, often approaching the double-exponential bounds even for modest systems. 
+
+In contrast, the Graded Reverse Lexicographic Order (Grevlex) sorts primarily by total degree and breaks ties by penalizing the last variables. As proved in \cite{Bayer1987_CriterionForDetectingMRegularity}, for generic ideals, Grevlex minimizes the maximal degree of polynomials appearing in the Gröbner basis. It maintains the homogeneity of the system as long as possible, preventing the premature degree explosion seen in Lex. Because of this efficiency gap, a standard strategy in the field is to perform the heavy computational lifting using Grevlex, and then, if a Lex basis is required (e.g., for solving equations), to use a conversion algorithm like \cite{Gerdt2003_ImplementationFGLM} or \cite{Tran2000_FastAlgorithmForGBConversion} to transform the result.

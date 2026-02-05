@@ -1,0 +1,103 @@
+\section{Buchberger's Algorithm}
+
+While the existence of Gröbner bases is theoretically guaranteed, their practical utility depends on our ability to compute them explicitly. In 1965, Bruno Buchberger introduced the fundamental algorithm for constructing these bases in \cite{Buchberger1965_algorithmGerman,Buchberger1965_algorithmEnglish}. The core of his method relies on detecting and repairing "ambiguities" where the multivariate division algorithm fails to be unique.
+
+The primary obstruction to uniqueness in multivariate division is the cancellation of leading terms. If we have two polynomials $f, g \in I$, it is possible that a linear combination $af + bg$ causes the leading terms to cancel, revealing a new leading term of lower order that was previously hidden. Buchberger identified that we do not need to check all random linear combinations. We only need to check the minimal cancellation between the leading terms of pairs of generators.
+
+\begin{definition}[$S$-polynomial]
+\label{def:s_polynomial}
+Let $f, g \in k[x_1, \dots, x_n]$ be non-zero polynomials. Let $x^\gamma = \text{lcm}(\text{LM}(f), \text{LM}(g))$ be the least common multiple of their leading monomials. The $S$-polynomial of $f$ and $g$ is defined as
+$$
+S(f, g) = \frac{x^\gamma}{\text{LT}(f)} \cdot f - \frac{x^\gamma}{\text{LT}(g)} \cdot g
+$$
+\end{definition}
+
+The $S$-polynomial is constructed specifically to cancel the leading terms of $f$ and $g$. It is very likely that this cancellation reveals a new leading term in the ideal that is not divisible by either $\text{LT}(f)$ or $\text{LT}(g)$. In other words, if this cancellation results in a polynomial that cannot be reduced to zero by the current set of generators \footnote{It is fascinating that the $S$-polynomial reveals all potential ambiguities or problems with a generating set.}, we have found a new polynomial that needs to be added to our generating set to ensure it covers all leading terms of the ideal.
+
+Now suppose $f \in I$, then by Definition \ref{def:ideal}, $f$ can be expressed as
+$$ f = \sum_{i=1}^{s} a_i g_i $$
+for some $a_i \in R$ and $g_i \in G$. Observe that each term in this sum has a lead term $\text{LT}(a_i g_i) = \text{LT}(a_i) \text{LT}(g_i)$, which is divisible by $\text{LT}(g_i)$. The only way that $f$ has a leading term not divisible by any $\text{LT}(g_i)$ is if there is cancellation among these leading terms. We can trace this cancellation back to pairs of generators $g_i, g_j$ whose leading terms cancel in the sum. The minimal such cancellation is exactly the $S$-polynomial $S(g_i, g_j)$, and by our assumption that $f \in I$, we must have $S(g_i, g_j) \in I$ as well. Therefore, if $G$ is a Gröbner basis, by property \textit{(i)} from Definition \ref{def:grobner_basis}, we must have $\text{reduce}(S(g_i, g_j), G) = 0$ for all pairs $i, j$. Conversely, if this condition holds for all pairs, then any polynomial $f \in I$ cannot have a leading term that escapes divisibility by some $\text{LT}(g_i)$, because any such escape would trace back to a non-zero remainder from some $S$-polynomial. This leads us to Buchberger's Criterion.
+
+
+\begin{theorem}[Buchberger's Criterion]
+\label{thm:buchberger_criterion}
+Let $G = \{g_1, \dots, g_s\}$ be a generating set for an ideal $I$. Then $G$ is a Gröbner basis for $I$ if and only if:
+$$
+\text{reduce}(S(g_i, g_j), G) = 0
+$$
+for all pairs $1 \le i < j \le s$.
+\end{theorem}
+
+This theorem transforms the definition of a Gröbner basis from an abstract property about infinite sets (all polynomials in $I$) into a finite computational check. Buchberger's algorithm is a direct application of the criterion above, which computes a Gröbner basis of $I$ from any starting generating set of $I$, by iteratively checking all $S$-polynomials of our current generating set. If any $S$-polynomial reduces to a non-zero remainder, we force them to reduce to zero, by adding their reduction to our generating set. This process continues to reveal even more $S$-polynomials to check, until all $S$-polynomials reduce to zero. At this point our generating set is a Gröbner basis.
+
+An outline of Buchberger's algorithm is provided in Algorithm \ref{alg:buchberger}. There are three main functions used in the algorithm. We assume we have a function that returns a pair from the set of pairs $P$. This selection could be as simple as treating the pair set as a queue data structure and returning the first element at each iteration. We also need a function \textit{reduce} that implements polynomial long division and returns the remainder, as defined in Algorithm \ref{alg:mult_polydivision}. Finally, an \textit{update} function is needed to update the set of pairs $P$ when a new generator is added to the basis, defined as
+$$
+\text{update}(P, G, r) = P \cup \{(r, h) \mid h \in G\}
+$$
+where $r$ is the new polynomial added to the basis $G$, and $h$ iterates over all existing generators in $G$.
+
+\begin{algorithm}[H]
+\caption{Buchberger's Algorithm}
+\label{alg:buchberger}
+\begin{algorithmic}[1]
+\Require $F = \{f_1, \dots, f_s\}$
+\Ensure Gröbner basis $G$ for $I = \langle F \rangle$
+\State $G \leftarrow F$
+\State $P \leftarrow \{(f_i, f_j) \mid f_i, f_j \in G, f_i \neq f_j\}$
+\While{$P \neq \emptyset$}
+    \State $(f_i, f_j) \leftarrow \text{select}(P)$
+    \State $P \leftarrow P \setminus \{(f_i, f_j)\}$
+    \State $r \leftarrow \text{reduce}(S(f_i, f_j), G)$
+    \If{$r \neq 0$}
+        \State $P \leftarrow P \cup \{(r, h) \mid h \in G\}$
+        \State $G \leftarrow G \cup \{r\}$
+    \EndIf
+\EndWhile
+\State \Return $G$
+\end{algorithmic}
+\end{algorithm}
+
+The termination of the Buchberger algorithm is not immediately obvious, as each iteration can potentially add new polynomials to $G$, leading to more $S$-polynomials to check, and thus an unbounded loop. However, the algorithm is guaranteed to terminate by considering the monomial ideal generated by the leading terms of the elements in $G$. Each time a non-zero remainder $r = \text{reduce}(S(f_i, f_j), G)$ is added to $G$, its leading term $\text{LT}(r)$ is not divisible by any of the leading terms of the current generators. Consequently, the new monomial ideal $\langle \text{LT}(G \cup \{r\}) \rangle$ strictly contains the previous ideal $\langle \text{LT}(G) \rangle$. This process creates a strictly ascending chain of monomial ideals
+$$
+\langle \text{LT}(g_1) \rangle \subsetneq \langle \text{LT}(g_1), \text{LT}(g_2) \rangle \subsetneq \langle \text{LT}(g_1), \text{LT}(g_2), \text{LT}(g_3) \rangle \subsetneq \dots
+$$
+According to the Ascending Chain Condition (ACC), every ascending chain of ideals in the polynomial ring $k[x_1, \dots, x_n]$ over the field $k$ (or any Noetherian ring) must stabilize. In the context of monomial ideals, this is a direct consequence of Dickson's Lemma, as shown in \cite{cox2015_IVA}, which states that every monomial ideal is finitely generated. Therefore, the chain cannot increase indefinitely, ensuring the algorithm terminates in a finite number of steps. 
+
+As proved in \cite{cox2015_IVA}, Algorithm \ref{alg:buchberger} finds a Gröbner basis for any ideal $I$. However, in many cases the output of Buchberger's algorithm often contains redundant elements. 
+
+\begin{example}
+\label{ex: redundant_G}
+Consider the ideal $I = \langle x^2, xy+y, x^2y+z \rangle$ in $\mathbb{Q}[x,y,z]$. Using Grevlex ordering, Buchberger's algorithm produces the Gröbner basis
+$$G = \Bigg\{ \; x^2, \; xy + y ,\; x^2y+z ,\; y ,\; -z \; \Bigg\}$$
+Notice that $\text{LT}(x^2y + z) = x^2 y$ is divisible by $\text{LT}(x^2) = x^2$. So $x^2 y + z$ is redundant in the sense that removing it from $G$ does not change the ideal generated by the leading terms.
+\end{example}
+
+To address this redundancy, we can remove these redundant polynomials from $G$ without losing the Gröbner basis property, to obtain a minimal Gröbner basis. 
+
+\begin{definition}[Minimal Gröbner Basis]
+\label{def:minimal_grobner_basis}
+A Gröbner basis $G$ is minimal if $\text{LT}(g_i)$ does not divide $\text{LT}(g_j)$ for any $i \neq j$.
+\end{definition}
+
+\begin{example}
+\label{ex: minimal_G}
+Continuing from Example \ref{ex: redundant_G}, we can rewrite the Gröbner basis $G$ as
+$$G_{minimal} = \Bigg\{ \; x^2, \; y ,\; -z \; \Bigg\}$$
+which is a minimal Gröbner basis for the ideal $I$. Observe that removing the redundant polynomials did not change the ideal generated by the leading terms, as $\langle x^2, y, -z \rangle = \langle x^2, xy + y, x^2 y + z \rangle$.
+\end{example}
+
+A powerful property in mathematics is uniqueness, which allows us to identify canonical representatives for equivalence classes. In the context of Gröbner bases, we can further refine the concept of minimality to achieve uniqueness among all Gröbner bases for a given ideal with a fixed monomial order.
+
+\begin{definition}[Reduced Gröbner Basis]
+\label{def:reduced_grobner_basis}
+A Gröbner basis $G$ is reduced if, for all $g \in G$ no monomial appearing in $g$ is divisible by any $\text{LT}(h)$ for $h \in G \setminus \{g\}$, and, $\text{LC}(g) = 1$ (monic polynomials).
+\end{definition}
+
+\begin{example}
+\label{ex: reduced_G}
+Continuing from Example \ref{ex: minimal_G}, we can further reduce the minimal Gröbner basis $G_{minimal}$ to obtain
+$$G_{reduced} = \Bigg\{ \; x^2, \; y ,\; z \; \Bigg\}$$
+which is a reduced Gröbner basis for the ideal $I$. Note that we changed $-z$ to $z$ to make it monic.
+\end{example}
+
+Similar to many powerful tools in mathematics, like reduced row echelon form in linear algebra, the significance of reduced Gröbner bases lies in their uniqueness. For any ideal $I$ and a fixed monomial order, there exists a unique reduced Gröbner basis. Most implementations of Buchberger's algorithm, including the \textit{gb} function in \textit{Macaulay2} \cite{Stillman_M2}, automatically return this reduced Gröbner basis through the same process shown in Examples \ref{ex: redundant_G}, \ref{ex: minimal_G}, and \ref{ex: reduced_G}.

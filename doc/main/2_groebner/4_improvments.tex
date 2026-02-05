@@ -1,0 +1,134 @@
+\section{Improvements to Buchberger's Algorithm}
+\label{sec:improvements_buchberger}
+
+The naive implementation of Buchberger's Algorithm (Algorithm \ref{alg:buchberger}) guarantees termination, but its efficiency is usually improved for practical applications.
+
+One of the computational bottleneck in Algorithm \ref{alg:buchberger} is computing $\text{reduce}(S(f_i, f_j), G)$. The most significant optimizations focus on improving the choice of divisor in Algorithm \ref{alg:mult_polydivision}. It is typically most efficient to choose the smallest $\text{LT}(f_i)$ available in each iteration. This strategy minimizes the size of intermediate polynomials during reduction, leading to faster computations. Additionally, we modify Algorithm \ref{alg:mult_polydivision} to perform a full tail reduction, ensuring that no term in the remainder $r$ is divisible by any $\text{LT}(f_i)$.
+
+The most important implementation choices occur in the \textit{select} and \textit{update} functions. Empirically, the vast majority of $S$-polynomials reduce to zero. These zero reductions are computationally expensive but mathematically insignificant, as they tell us that the current basis is already sufficient for that specific pair, adding no new information. The central challenge in optimizing Buchberger's algorithm is therefore, preemptively detecting which $S$-polynomials will reduce to zero so we can skip them entirely, and deciding which surviving pair to process next to keep intermediate coefficients small and induce future zero reductions as early as possible.
+
+\subsection{Pair Elimination}
+\label{subsec:pair_elimination}
+
+The most effective optimization is to remove redundant $S$-polynomials $S(g_i, g_j)$ for the eventually computed Gröbner basis $G = \{g_1, \ldots, g_s\}$ before they are ever computed. Observe that in Theorem \ref{thm:buchberger_criterion}, if we can theoretically guarantee that an $S$-polynomial reduces to zero using the existing elements of $G$, we can discard the pair immediately without actually reducing them. There are two fundamental criteria for elimination, often combined into the Gebauer-Möller rules \cite{Gebauer1988_InstallationOfGB}. 
+
+\begin{lemma}[Product Criterion]
+\label{lem: product_criterion}
+Let $f, g \in G$. If their leading monomials are relatively prime, i.e.,
+$$ \text{lcm}(\text{LM}(f), \text{LM}(g)) = \text{LM}(f) \cdot \text{LM}(g) $$
+then $S(f, g)$ reduces to zero modulo $\{f, g\}$.
+\end{lemma}
+\begin{proof}
+If the leading monomials share no variables, the cancellation in the $S$-polynomial corresponds to the trivial relation $g \cdot f - f \cdot g = 0$. This symmetry ensures the $S$-polynomial reduces to zero.
+\end{proof}
+
+\begin{lemma}[Chain Criterion]
+\label{lem: chain_criterion}
+Consider three generators $f, g, h \in G$. If $\text{LM}(h)$ divides the $\text{lcm}(\text{LM}(f), \text{LM}(g))$ then
+$$
+S(f, g) = \frac{}{}\frac{\text{lcm}(\text{LM}(f), \text{LM}(g))}{\text{LT}(f)} \cdot S(f, h) - \frac{\text{lcm}(\text{LM}(f), \text{LM}(g))}{\text{LT}(g)} \cdot S(g, h)
+$$
+and so we have already processed the pairs $(f, h)$ and $(g, h)$, then the pair $(f, g)$ is redundant.
+\end{lemma}
+Intuitively, the $S$-polynomial $S(f, g)$ accounts for the ambiguity between $f$ and $g$. If $h$ sits between them in the divisibility lattice, the ambiguity is already resolved by the interactions $f \leftrightarrow h$ and $h \leftrightarrow g$.
+
+The Gebauer-Möller rules in \cite{Gebauer1988_InstallationOfGB} combine these two criteria, originally shown in \cite{Buchberger1985_AlgoMethod}, to efficiently prune the set of pairs $P$ during the \textit{update} step of Buchberger's algorithm.
+
+\subsection{Selection Strategies}
+\label{subsec:selection_strategies}
+
+At any given step of Buchberger's algorithm, the set of pending pairs $P$ may contain large numbers of candidates. The order in which we process these pairs, in the \textit{select} function, is often the deciding factor between an efficient computation and an infeasible one. A simple implementation of \textit{select} might treat $P$ as a queue, processing pairs in the order they were created. This is an inefficient strategy, and although the correctness of the algorithm is unaffected, many additional redundant generators may be created, leading to a combinatorial explosion in the number of pairs to consider.
+
+The governing heuristic for selection in reduction algorithms like the Euclidean algorithm and Buchberger's algorithm is to choose the small elements first. We aim to process pairs that are likely to result in simple polynomials, those with low degree or few terms, or more mathematically described as those pairs with their lead monomials having small least common multiple in the monomial order or in total degree. These "small" pairs are more likely to reduce to zero quickly, preventing the growth of intermediate expressions.
+
+Four standard selection strategies are commonly used, each distinguished by their definition of "small." In Algorithm \ref{alg:buchberger}, even our naive implementation of \textit{select} using a queue can be viewed as a specific strategy; selecting the pair that was created first. So for selecting a pair $(f_i, f_j) \in P$, we select the pair with minimal $i$ among all pairs with minimal $j$. 
+
+\begin{definition}[Order-Based Selection]
+    \label{def:normal_select}
+    Utilizes the monomial order $>$ already fixed for the ring, and selects $(f_i, f_j)$ such that $\text{lcm}(\text{LM}(f_i), \text{LM}(f_j))$ is minimal with respect to $>$.
+\end{definition}
+
+\begin{definition}[Degree-Based Selection]
+    \label{def:degree_select}
+    Selects the pair $(f_i, f_j)$ such that $\text{deg}(\text{lcm}(\text{LM}(f_i), \text{LM}(f_j)))$ is minimal. 
+\end{definition}
+
+Definition \ref{def:normal_select} was first proposed by Buchberger in \cite{Buchberger1965_algorithmEnglish}, and is often called the \textit{Normal} strategy. In the context of the graded reverse lexicographic order (grevlex), this strategy prioritizes pairs with the lowest total degree. In the event of a tie in total degree, it selects the pair that is smallest in the reverse lexicographic sense. Final ties are typically resolved by creation order (the queue strategy). Both strategies aim to create a breadth-first traversal of the ideal, resolving all ambiguities at degree $d$ before moving to degree $d+1$. This is the standard default for many computer algebra systems because it naturally controls the growth of intermediate polynomials.
+
+However, both the Normal and Degree-based strategies falter in non-homogeneous ideals because they rely on the apparent degree. In these cases, leading term cancellations can cause the degree of a polynomial to drop, masking the true computational complexity of its ancestry.
+
+\begin{example}
+Consider the polynomial $f = x^{10} + x$ with $\text{deg}(f) = 10$. If a reduction step subtracts $x^{10}$, the resulting polynomial is $r = x$, which has an apparent degree of 1. Despite its small size, $r$ originated from a degree 10 polynomial. If the algorithm treats $r$ as a degree-1 polynomial, it may prematurely prioritize $S$-polynomials involving $r$, inadvertently reintroducing high-degree terms that were previously cancelled and causing a computational explosion.
+\end{example}
+
+The concept of $r$ "remembering" its high-degree origin is formalized in the \textit{Sugar Cube} strategy in \cite{Giovini1991_OneSugarCube}. This strategy treats the degree of a non-homogeneous polynomial as a "phantom degree" to emulate the efficiency of homogeneous computations.
+
+\begin{definition}[Sugar Cube Selection]
+    \label{def:sugar_select}
+    The sugar of a polynomial $f$ is initialized as $\text{sugar}(f) = \text{deg}(f)$ for all input polynomials. For any subsequent polynomial $h$ generated during the algorithm (e.g., via $S$-polynomials or reductions), its sugar is defined recursively.
+    
+    Given $f_{i}$ and $f_{j}$, let $L=\text{lcm}(\text{LM}(f_{i}),\text{LM}(f_{j}))$. We define the relative sugar of each component as
+    $$
+    \sigma_{i} = \text{sugar}(f_{i})+\text{deg }\bigg(\frac{L}{\text{LM}(f_{i})}\bigg)
+    $$
+    $$
+    \sigma_{j} = \text{sugar}(f_{j})+\text{deg }\bigg(\frac{L}{\text{LM}(f_{j})}\bigg)
+    $$
+    
+    The sugar of the resulting $S$-polynomial $S(f_{i},f_{j})$ is then simply
+    $$
+    \text{sugar}(S(f_{i},f_{j}))= \max(\sigma_{i},\sigma_{j})
+    $$
+
+    If $f$ is reduced by $g$ to obtain $h=f-mg$, where $m$ is a monomial, the sugar is updated as
+    $$
+    \text{sugar}(h)=\max (\text{sugar}(f),\text{sugar}(g)+\text{deg}(m))
+    $$
+
+    The algorithm prioritizes critical pairs $(f_{i},f_{j})$ that minimize the sugar of their associated $S$-polynomial.
+\end{definition}
+
+Sugar selection prevents the algorithm from being tricked by cancellations. It treats the "phantom" high-degree terms as if they were still present, ensuring that we do not process complex relationships simply because they appear simple on the surface. For difficult, non-homogeneous benchmark problems, Sugar is consistently known to be the most robust strategy.
+
+There are also several adversarial and baseline strategies used to benchmark the performance of selection strategies. The \textit{Random} strategy provides a stochastic baseline by selecting a pair uniformly at random from the set of critical pairs. Structural baselines include \textit{Last}, which treats the pair set as a stack by selecting the pair $(f_{i},f_{j})$ with the maximal indices $j$ and then $i$. Adversarial strategies designed to induce degree growth include \textit{Codegree}, which prioritizes the maximal total degree of the $\text{lcm}(\text{LM}(f_{i}),\text{LM}(f_{j}))$, and \textit{Strange}, which selects the pair with the largest $\text{lcm}$ according to the specific monomial ordering. Finally, the \textit{Spice} strategy acts as a direct stress test by selecting the pair with the largest sugar degree, representing the maximum degree the $S$-polynomial would achieve under homogenization. These strategies serve as essential benchmarks for validating that prioritizing high-degree elements leads to computational infeasibility.
+
+\subsection{Signature-Based Algorithms}
+\label{subsec:signature_based}
+
+The pair elimination criteria detailed in Section \ref{subsec:pair_elimination} are restricted to the leading monomials of the current basis. While computationally efficient, these criteria are inherently myopic, as they neglect the algebraic history of the generators. Signature-based algorithms, such as Faugère's $F_{5}$ \cite{Faugere2002_F5}, mitigate this by tracking the symbolic origin of each polynomial throughout the reduction process.
+
+Formally, any polynomial $p$ in the ideal $I=\langle f_{1},\dots ,f_{m}\rangle \subset R$ can be lifted to the free module $R^{m}$. Let $\{\mathbf{e}_{1},\dots ,\mathbf{e}_{m}\}$ be the standard basis of $R^{m}$, where each $\mathbf{e}_{i}$ maps to the input generator $f_{i}$. Any $p\in I$ is the image of a module element $\alpha \in R^{m}$ under the map $\pi :R^{m}\rightarrow I$, defined by 
+$$\pi (\alpha )=\sum _{k=1}^{m}u_{k}f_{k}=p$$
+This module-theoretic framework allows for the tracking of synergies and redundancies through the concept of signatures. 
+
+The \textit{signature} of a polynomial $p$, denoted $\sigma (p)$, is defined as the leading term of its module representative $\alpha $ with respect to a module term order (such as position-over-coefficient (POT)). Specifically, if $\text{LT}(u_{i})\mathbf{e}_{i}$ is the maximal term in $\alpha $ under the chosen order, then
+$$\sigma (p)=\text{LT}(u_{i})\mathbf{e}_{i}$$
+where $i$ denotes the index of the leading module component. By augmenting polynomials with these signatures, algorithms can identify and discard $S$-polynomials that correspond to known syzygies of the initial generators, thereby preempting redundant reductions.
+
+
+In the classic Buchberger algorithm, an $S$-polynomial is computed and reduced; if the result is zero, it is discarded. An algebraic reduction to zero implies the discovery of a syzygy (a relation between the generators). Signature algorithms operate on the principle that these zero reductions can be predicted. If a pair of polynomials implies a relation matching a trivial syzygy (algebraically equivalent to $f_i f_j - f_j f_i = 0$), the algorithm detects this via signature comparison. This strategy is formalized in the $F_5$ algorithm.
+
+\begin{definition}[$F_5$ Criterion]
+    Let $p_i, p_j \in I$ be polynomials with signatures $\sigma(p_i)$ and $\sigma(p_j)$. An $S$-polynomial $S(p_i, p_j)$ is deemed redundant and can be discarded under the $F_5$ criterion if its signature is a multiple of the signature of an existing basis element. Specifically, the algorithm maintains the invariant that it only processes pairs with distinct, non-trivial signatures. If the signature of a proposed reduction suggests a dependency on a known principal syzygy (the trivial commutation of generators), the pair is rejected without arithmetic reduction.
+\end{definition}
+
+This criterion allows the algorithm to distinguish between useful reductions that expand the basis and useless reductions that merely rediscover known algebraic identities. The efficiency gains are most pronounced for specific classes of ideals.
+
+For regular sequences, ideals where the generators exhibit no algebraic dependencies other than the trivial principal syzygies, the $F_5$ algorithm guarantees the computation of a Gröbner basis without performing a single zero reduction. Given that zero reductions constitute the primary computational bottleneck in standard Buchberger variants, often consuming upwards of 90\% of total runtime, the elimination of these redundant steps offers a massive theoretical and practical speedup.
+
+\subsection{Symbolic Pre-processing}
+\label{subsec:symbolic_preprocessing}
+
+Before engaging the computationally intensive machinery of Buchberger's algorithm or $F_5$, it is imperative to simplify the input ideal through symbolic pre-processing. These preliminary steps, while computationally inexpensive relative to the basis construction, significantly improve the numerical conditioning and algebraic structure of the problem.
+
+Because the complexity of computing a Gröbner basis is doubly exponential in the number of variables $n$. Therefore, strictly reducing the dimension of the polynomial ring is the single most effective optimization available. If the ideal $I$ contains linear generators (polynomials of total degree 1), these imply direct dependencies between variables. We can exploit this by performing Gaussian elimination on the linear subsystem of generators. For a linear generator $f = c_1 x_1 + c_2 x_2 + \dots + c_n x_n + d$ we select a variable $x_k$ with a non-zero coefficient to serve as the pivot. We solve for $x_k$ and substitute the resulting affine expression into the remaining generators $f_j$ for $j \neq i$. This substitution defines a ring isomorphism that effectively projects the ideal into a polynomial ring of dimension $n-1$. This process is repeated iteratively until all linear generators have been eliminated.
+
+Once the dimension is minimized, we must address the stability of the generators. Affine Gröbner basis computations often suffer from degree drops, where the cancellation of leading terms results in a polynomial of significantly lower degree. These lower-degree terms can disrupt the selection strategy of the algorithm. While the Sugar strategy attempts to mitigate this by simulating homogeneity through virtual degree tracking, \textit{explicit homogenization} offers superior stability by embedding the problem into projective space. We introduce a homogenization variable $t$ to map the ideal from $k[x_1, \dots, x_n]$ to the graded ring $S = k[x_1, \dots, x_n, t]$. For each generator $f$, we compute its homogeneous form $f^h$ by
+$$
+f^h(x_1, \dots, x_n, t) = t^{\text{deg}(f)} \cdot f\left(\frac{x_1}{t}, \dots, \frac{x_n}{t}\right)
+$$
+Working in the projective ring $S$ ensures that all polynomials in the current basis are homogeneous. Consequently, the degree of an $S$-polynomial is strictly determined by the degrees of its parents, eliminating the unpredictability of affine degree falls. Once the homogeneous Gröbner basis $G^h$ is computed, the affine solution is recovered by the de-homogenization map (setting $t=1$), which corresponds to intersecting the projective variety with the affine chart.
+
+With the system reduced and stabilized, the final critical parameter is the choice of admissible monomial order. For generic systems, the graded reverse lexicographic order (\textit{grevlex}) is empirically and theoretically optimal. By directing the algorithm to eliminate the highest-degree terms involving the last variables first, \textit{grevlex} keeps intermediate polynomials short and coefficients small, delaying the explosion of expression swell. However, the efficiency of \textit{grevlex} is sensitive to the specific permutation of input variables. Pre-processing heuristics can analyze the input generators to determine an optimal static ordering; a common strategy places variables appearing with high frequency or power at the bottom of the order to delay their processing until the system is partially simplified.
+
+While \textit{grevlex} is efficient for calculating invariants like the Hilbert series, applications requiring elimination theory, such as solving systems of equations, necessitate a Lexicographic basis. Computing a Lex basis directly is often computationally intractable due to massive coefficient growth. To circumvent this, standard workflows utilize a two-step process: first computing the basis in the fast \textit{grevlex} order, and then converting it to the target Lex order using a change-of-ordering algorithm. For zero-dimensional ideals, the FGLM algorithm \cite{Faugere1993_FGLM, Gerdt2003_ImplementationFGLM} performs this conversion efficiently using linear algebra. For positive-dimensional ideals, the Gröbner Walk algorithm \cite{Collart1997_walk, Amrhein1997_OnTheWalk, Fukuda2005_groebnerwalk, Tran2000_FastAlgorithmForGBConversion} achieves the same result by traversing the Gröbner fan, moving between adjacent cones to iteratively transform the basis. This compute-then-convert pipeline is typically orders of magnitude faster than a direct Lex computation.
